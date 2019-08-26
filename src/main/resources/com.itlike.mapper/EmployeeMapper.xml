@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.itlike.mapper.EmployeeMapper" >
+
+  <!--查询映射结果集。
+    部门跟员工之间是多对一的关系，因此，要这样编码：在一的一方添加一个对象属性。（即：建立外键关系）
+  -->
+  <resultMap id="BaseResultMap" type="com.itlike.domain.Employee" >
+    <id column="id" property="id" jdbcType="BIGINT" />
+    <result column="username" property="username" jdbcType="VARCHAR" />
+    <result column="inputtime" property="inputtime" jdbcType="TIMESTAMP" />
+    <result column="tel" property="tel" jdbcType="VARCHAR" />
+    <result column="email" property="email" jdbcType="VARCHAR" />
+    <result column="state" property="state" jdbcType="BIT" />
+    <result column="admin" property="admin" jdbcType="BIT" />
+    <association property="department" javaType="com.itlike.domain.Department" columnPrefix="d_">
+      <result column="id" property="id"/>
+      <result column="name" property="name"/>
+    </association>
+  </resultMap>
+
+  <!--根据id删除员工-->
+  <delete id="deleteByPrimaryKey" parameterType="java.lang.Long" >
+    delete from employee
+    where id = #{id,jdbcType=BIGINT}
+  </delete>
+
+  <!--1.1添加员工 -->
+  <insert id="insert" parameterType="com.itlike.domain.Employee" useGeneratedKeys="true" keyProperty="id">
+    insert into employee (id, username, password, inputtime,
+      tel, email, state, admin, 
+      dep_id)
+    values (#{id}, #{username}, #{password}, #{inputtime},
+      #{tel}, #{email}, #{state}, #{admin},
+      #{department.id})
+  </insert>
+  <!--1.2保存员工跟角色的关联关系-->
+  <insert id="insertEmployeeAncRoleRel">
+    insert into employee_role_rel(eid,rid) values(#{id},#{rid})
+  </insert>
+
+  <!--2.1编辑员工数据-->
+  <update id="updateByPrimaryKey" parameterType="com.itlike.domain.Employee" >
+    update employee
+    set username = #{username,jdbcType=VARCHAR},
+      inputtime = #{inputtime,jdbcType=TIMESTAMP},
+      tel = #{tel,jdbcType=VARCHAR},
+      email = #{email,jdbcType=VARCHAR},
+      admin = #{admin,jdbcType=BIT},
+      dep_id = #{department.id,jdbcType=BIGINT}
+    where id = #{id,jdbcType=BIGINT}
+  </update>
+
+  <!--2.2编辑员工的状态-->
+  <update id="updateState" parameterType="Long">
+    update employee set state=false where id = #{id}
+  </update>
+
+  <!--2.3根据id查询-->
+  <select id="selectByPrimaryKey" resultMap="BaseResultMap" parameterType="java.lang.Long" >
+    select id, username, inputtime, tel, email, state, admin, dep_id
+    from employee
+    where id = #{id,jdbcType=BIGINT}
+  </select>
+
+  <!--定义一个sql片段条件-->
+  <sql id="where_sql">
+    <where>
+      <!-- 当关键字为空，或者为空内容时，就执行if代码块中的代码，效果是：按照关键字进行查询-->
+      <!--当不执行if代码块中的代码时，那就是查询所有-->
+      <if test="keyword!=null and keyword!=''">
+        and e.username like concat('%',#{keyword},'%')
+        or e.tel like concat('%',#{keyword},'%')
+        or e.email like concat('%',#{keyword},'%')
+      </if>
+    </where>
+  </sql>
+
+  <!--2.4员工关联部门查询————查询所有跟按照关键字查询 合为一个sql语句-->
+  <select id="selectAll" resultMap="BaseResultMap" parameterType="QueryVo">
+    select e.id,e.username,e.inputtime,e.tel,e.email,e.state,e.admin,d.id as d_id,d.name as d_name
+    from employee as e LEFT JOIN department as d
+    on e.dep_id = d.id
+    <include refid="where_sql"/>
+    order by e.id
+  </select>
+  <!--2.5根据员工id，查询对应的所有角色id-->
+  <select id="getRoleByEid" parameterType="Long" resultType="Long">
+    select rid from employee_role_rel where eid = #{id}
+  </select>
+
+  <!--2.6打破员工跟角色的关联关系-->
+  <delete id="deleteRoleRel" parameterType="Long">
+    delete from employee_role_rel where eid = #{id}
+  </delete>
+
+
+  <!--3.根据用户名查询有没有当前这个用户-->
+  <select id="selectEmployeeWithUsername" resultType="com.itlike.domain.Employee">
+    select * from employee where username = #{username}
+  </select>
+
+    <!--4、根据用户id查询对应的角色编号名称-->
+    <select id="getRolesById" resultType="String">
+        select r.rnum from employee_role_rel as er
+        left join role as r
+        on er.rid = r.rid
+        where eid = #{id}
+    </select>
+
+    <!--根据用户id查询对应的资源权限名称
+        1、查询出所有的角色和权限
+        2、筛选出当前用户有哪些角色
+    -->
+    <select id="getPermissionById" resultType="String">
+        select DISTINCT p.presource from role_permission_rel as rp
+        LEFT JOIN permission as p
+        ON rp.pid = p.pid where rid in (select rid from employee_role_rel where eid = #{id})
+    </select>
+</mapper>

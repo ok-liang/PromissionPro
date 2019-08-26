@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.itlike.mapper.RoleMapper" >
+  <resultMap id="BaseResultMap" type="com.itlike.domain.Role" >
+    <id column="rid" property="rid" jdbcType="BIGINT" />
+    <result column="rnum" property="rnum" jdbcType="VARCHAR" />
+    <result column="rname" property="rname" jdbcType="VARCHAR" />
+  </resultMap>
+  <delete id="deleteByPrimaryKey" parameterType="java.lang.Long" >
+    delete from role
+    where rid = #{rid,jdbcType=BIGINT}
+  </delete>
+  <!--1.1【保存角色】
+  当我们保存角色信息到数据库中之后，我们想要知道它的自增的id。做法是：设置如下两个字段
+    useGeneratedKeys="true" keyProperty="rid" //把刚才插入的记录的主键赋值给参数role的rid。
+  -->
+  <insert id="insert" parameterType="com.itlike.domain.Role" useGeneratedKeys="true" keyProperty="rid">
+    insert into role (rid, rnum, rname)
+    values (#{rid,jdbcType=BIGINT}, #{rnum,jdbcType=VARCHAR}, #{rname,jdbcType=VARCHAR})
+  </insert>
+
+  <!-- 1.2保存角色与权限之间的关系 -->
+  <insert id="insertRoleAndPermissionRel">
+    insert into role_permission_rel(rid,pid) values (#{rid},#{pid})
+  </insert>
+
+  <!--2.1打破角色 与 权限之间的关联关系-->
+  <delete id="deletePermissionRel" parameterType="java.lang.Long">
+    delete from role_permission_rel where rid = #{rid}
+  </delete>
+  <!--2.2更新角色信息-->
+  <update id="updateByPrimaryKey" parameterType="com.itlike.domain.Role" >
+    update role
+    set rnum = #{rnum},
+      rname = #{rname}
+    where rid = #{rid}
+  </update>
+  <!--2.3重新建立角色与权限之间的关系 insertRoleAndPermissionRel -->
+
+  <select id="selectByPrimaryKey" resultMap="BaseResultMap" parameterType="java.lang.Long" >
+    select rid, rnum, rname
+    from role
+    where rid = #{rid,jdbcType=BIGINT}
+  </select>
+  <select id="selectAll" resultMap="BaseResultMap" >
+    select rid, rnum, rname
+    from role
+  </select>
+
+
+</mapper>
